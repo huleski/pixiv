@@ -1,8 +1,8 @@
 {
-  "name": "hl",
+  "name": "vue-pixiv",
   "version": "1.0.0",
   "description": "A Vue.js project",
-  "author": "chenjianyu1 <chenjianyu1@gemdale.com>",
+  "author": "Holeski <huleski@gmail.com>",
   "private": true,
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
