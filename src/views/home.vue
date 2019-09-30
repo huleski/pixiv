@@ -10,13 +10,24 @@
         :picker-options="pickerOptions"
       ></el-date-picker>
     </div>
-    <button type="button" class="el-carousel__arrow el-carousel__arrow--left" @click="changeDate(-1)">
+    <el-badge :value="selectedCount" class="item" type="success" id="count"/>
+    <el-button type="success" size="mini" plain @click="syncho" id="syncho">同步</el-button>
+    <el-button type="primary" size="mini" plain @click="today" id="today">今日</el-button>
+    <button
+      type="button"
+      class="el-carousel__arrow el-carousel__arrow--left"
+      @click="changeDate(-1)"
+    >
       <i class="el-icon-arrow-left"></i>
     </button>
-    <button type="button" class="el-carousel__arrow el-carousel__arrow--right">
+    <button
+      type="button"
+      class="el-carousel__arrow el-carousel__arrow--right"
+      @click="changeDate(1)"
+    >
       <i class="el-icon-arrow-right"></i>
     </button>
-    <div class="el-backtop" style="right: 100px; bottom: 150px;">
+    <div class="el-backtop" style="right: 10px; bottom: 10px;">
       <i class="el-icon-caret-top" @click="toTop"></i>
     </div>
 
@@ -49,14 +60,17 @@ export default {
       },
       list: [],
       over: false,
-      currentDate: ""
+      currentDate: "",
+      selectedCount: 35
     };
   },
   created() {},
   mounted() {
     this.init();
-    this.currentDate = new Date();
-    this.currentDate.setDate(new Date().getDate() - 2);
+    let tmpDate = new Date();
+    tmpDate.setDate(tmpDate.getDate() - 2);
+    this.currentDate = this.dateFormat(tmpDate);
+
     let _this = this;
 
     // 添加点击事件
@@ -87,7 +101,7 @@ export default {
       .getElementById("waterfall")
       .addEventListener("contextmenu", function(e) {
         event.preventDefault();
-        
+
         if (
           e.target.attributes["class"] &&
           e.target.attributes["class"].value == "img"
@@ -103,6 +117,7 @@ export default {
   },
   methods: {
     init() {
+      console.log(this.currentDate);
       // 初始化
       this.list = [];
       document.getElementById("waterfall").innerHTML = "";
@@ -123,11 +138,12 @@ export default {
         _this.loadMore();
       });
     },
-    loadMore() { // 加载数据
+    loadMore() {
+      // 加载数据
       // 没有数据
       if (this.over) return;
       let _this = this;
-      
+
       getData().then(res => {
         let dataArr = res.data.data;
         if (!dataArr || dataArr.length < 1) {
@@ -168,7 +184,8 @@ export default {
         waterfall.append(arr.join(""), ".img");
       });
     },
-    showBigAction(idx) { // 图片放大预览
+    showBigAction(idx) {
+      // 图片放大预览
       let tmp = [];
       this.list.forEach(ele => {
         tmp.push(ele.src.large);
@@ -178,7 +195,19 @@ export default {
         index: idx
       });
     },
-    toTop() { // 回到顶部
+    syncho() {
+      // 同步
+
+      return fetch({
+        url: "/static/data.json",
+        method: "post",
+        // params:{'year': year},
+        data: {}
+      });
+    },
+    today() {},
+    toTop() {
+      // 回到顶部
       var gotoTop = function() {
         var currentPosition =
           document.documentElement.scrollTop || document.body.scrollTop;
@@ -195,9 +224,17 @@ export default {
       // window.scrollTo(0, 0);
     },
     changeDate(i) {
-      let tmp = this.currentDate;
-      this.currentDate.setDate(tmp.getDate() + i);
-      console.log(this.currentDate)
+      let date = new Date(this.currentDate);
+      date.setDate(date.getDate() + i);
+      this.currentDate = this.dateFormat(date);
+    },
+    dateFormat(date) {
+      var oYear = date.getFullYear();
+      var oMoth = (date.getMonth() + 1).toString();
+      if (oMoth.length <= 1) oMoth = "0" + oMoth;
+      var oDay = date.getDate().toString();
+      if (oDay.length <= 1) oDay = "0" + oDay;
+      return oYear + "-" + oMoth + "-" + oDay;
     }
   }
 };
@@ -208,8 +245,8 @@ function getData() {
   return fetch({
     url: "/static/data.json",
     method: "get",
-    // params:{'year': year},
-    data: {}
+    params: {}
+    // data: {}
   });
 }
 
@@ -227,10 +264,10 @@ function clone(origin, target) {
 .el-carousel__arrow {
   position: fixed;
 }
-.el-backtop {
+/* .el-backtop {
   bottom: 10px !important;
   right: 10px !important;
-}
+} */
 .description i {
   display: none;
   color: lime;
@@ -242,4 +279,21 @@ function clone(origin, target) {
 .green-bord {
   border: 3px lime solid;
 }
+#count {
+  z-index: 100;
+  position: fixed;
+  left: 10px;
+  top: 10px;
+}
+#syncho {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}
+#today {
+  position: absolute;
+  right: 10px;
+  top: 40px;
+}
+
 </style>
