@@ -5,8 +5,8 @@ import Vue from 'vue'
 // let BASE_URL = 'http://10.131.13.66/api'
 // 创建axios实例
 const service = axios.create({
-  baseURL: 'http://localhost:8080', //正式服
-  // baseURL: "http://10.131.13.233:8080/api", //q全景
+  // baseURL: 'http://localhost:8080', //测试
+  baseURL: "https://api.pixivic.com", //正式
 
   timeout: 10000, // 请求超时时间
   /***如果qs没有stringify,将下面方法打开才能提交form,只在post时生效 **/

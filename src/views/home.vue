@@ -10,21 +10,14 @@
         :picker-options="pickerOptions"
       ></el-date-picker>
     </div>
-    <el-badge :value="selectedCount" class="item" type="success" id="count"/>
+    <el-badge :value="selectedCount" class="item" type="success" id="count" />
     <el-button type="success" size="mini" plain @click="syncho" id="syncho">同步</el-button>
     <el-button type="primary" size="mini" plain @click="today" id="today">今日</el-button>
-    <button
-      type="button"
-      class="el-carousel__arrow el-carousel__arrow--left"
-      @click="changeDate(-1)"
-    >
+
+    <button type="button" class="el-carousel__arrow el-carousel__arrow--left" @click="changeDate(-1)">
       <i class="el-icon-arrow-left"></i>
     </button>
-    <button
-      type="button"
-      class="el-carousel__arrow el-carousel__arrow--right"
-      @click="changeDate(1)"
-    >
+    <button type="button" class="el-carousel__arrow el-carousel__arrow--right" @click="changeDate(1)">
       <i class="el-icon-arrow-right"></i>
     </button>
     <div class="el-backtop" style="right: 10px; bottom: 10px;">
@@ -61,14 +54,15 @@ export default {
       list: [],
       over: false,
       currentDate: "",
-      selectedCount: 35
+      page: 0,
+      selectedCount: 0
     };
   },
   created() {},
   mounted() {
     this.init();
     let tmpDate = new Date();
-    tmpDate.setDate(tmpDate.getDate() - 2);
+    tmpDate.setDate(tmpDate.getDate() - 3);
     this.currentDate = this.dateFormat(tmpDate);
 
     let _this = this;
@@ -90,8 +84,10 @@ export default {
       ) {
         if (e.target.attributes["class"].value.indexOf("checked") == -1) {
           e.target.classList.add("checked");
+          _this.selectedCount += 1;
         } else {
           e.target.classList.remove("checked");
+          _this.selectedCount -= 1;
         }
       }
     });
@@ -117,9 +113,13 @@ export default {
   },
   methods: {
     init() {
-      console.log(this.currentDate);
+      console.log("初始化")
+      console.log(this.over)
       // 初始化
       this.list = [];
+      this.page = 1;
+      this.over = false;
+      this.selectedCount = 0;
       document.getElementById("waterfall").innerHTML = "";
 
       // 插件 https://github.com/mqyqingfeng/waterfall
@@ -129,7 +129,7 @@ export default {
         loader: "#loader",
         gapHeight: 20,
         gapWidth: 20,
-        pinWidth: 216,
+        pinWidth: 160,
         threshold: 100
       });
 
@@ -141,27 +141,35 @@ export default {
     loadMore() {
       // 加载数据
       // 没有数据
+      console.log("加载数据")
       if (this.over) return;
       let _this = this;
 
-      getData().then(res => {
-        let dataArr = res.data.data;
-        if (!dataArr || dataArr.length < 1) {
+      getData(_this.page, _this.currentDate).then(res => {
+        _this.page += 1;
+        if (!res || !res.data || !res.data.data || res.data.data.length < 1) {
           this.over = true;
           // document.getElementById("loader").innerHTML("hahahahahah")
           return;
         }
 
         // 处理多张图片
+        let dataArr = res.data.data;
         let imgArr = [];
-        dataArr.map(e => {
-          let partArr = e.imageUrls.map(urls => {
+        for (let i = 0; i < dataArr.length; i++) {
+          let e = dataArr[i];
+          if (e.type == "manga" || e.pageCount > 10) {
+            continue;
+          }
+
+          let partArr = e.imageUrls.forEach(urls => {
             let newObj = {};
             clone(e, newObj);
             newObj.src = urls;
+            newObj.src.large = newObj.src.large.replace('pximg.net', 'pixiv.cat');
             imgArr.push(newObj);
           });
-        });
+        }
 
         let preLen = _this.list.length;
         var arr = [];
@@ -197,13 +205,27 @@ export default {
     },
     syncho() {
       // 同步
+      let _this = this;
+      let checkedList = document.getElementsByClassName("checked");
 
-      return fetch({
-        url: "/static/data.json",
-        method: "post",
-        // params:{'year': year},
-        data: {}
-      });
+      for (let i = 0; i < checkedList.length; i++) {
+        let e = checkedList[i];
+        let img = e.previousElementSibling;
+        let index = img.getAttribute('son-idx');
+        let data = _this.list[index];
+
+        downloadIamge(
+          img.src,
+          data.artistPreView.name + " •「" + data.id + "」"
+        );
+      }
+
+      // return fetch({
+      //   url: "/static/data.json",
+      //   method: "post",
+      //   // params:{'year': year},
+      //   data: {}
+      // });
     },
     today() {},
     toTop() {
@@ -211,7 +233,7 @@ export default {
       var gotoTop = function() {
         var currentPosition =
           document.documentElement.scrollTop || document.body.scrollTop;
-        currentPosition -= 300;
+        currentPosition -= 100;
         if (currentPosition > 0) {
           window.scrollTo(0, currentPosition);
         } else {
@@ -227,6 +249,7 @@ export default {
       let date = new Date(this.currentDate);
       date.setDate(date.getDate() + i);
       this.currentDate = this.dateFormat(date);
+      this.init();
     },
     dateFormat(date) {
       var oYear = date.getFullYear();
@@ -241,11 +264,16 @@ export default {
 
 import fetch from "@/axios/config.js";
 //获取数据
-function getData() {
+function getData(page, currentDate) {
   return fetch({
-    url: "/static/data.json",
+    url: "/ranks",
+    // url: "/static/data.json",
     method: "get",
-    params: {}
+    params: {
+      page: page,
+      date: currentDate,
+      mode: 'day'
+    }
     // data: {}
   });
 }
@@ -257,6 +285,31 @@ function clone(origin, target) {
     target[prop] = origin[prop];
   }
   return target;
+}
+
+/**
+ * 下载图片
+ * @param  imgsrc 下载图片地址
+ * @param  name 图片名
+ */
+function downloadIamge(imgsrc, name) {
+  var image = new Image();
+  // 解决跨域 Canvas 污染问题
+  image.setAttribute("crossOrigin", "anonymous");
+  image.onload = function() {
+    var canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    var context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0, image.width, image.height);
+    var url = canvas.toDataURL("image/png"); //得到图片的base64编码数据
+    var a = document.createElement("a"); // 生成一个a元素
+    var event = new MouseEvent("click"); // 创建一个单击事件
+    a.download = name || "photo"; // 设置图片名称
+    a.href = url; // 将生成的URL设置为a.href属性
+    a.dispatchEvent(event); // 触发a的单击事件
+  };
+  image.src = imgsrc;
 }
 </script>
 
@@ -295,5 +348,4 @@ function clone(origin, target) {
   right: 10px;
   top: 40px;
 }
-
 </style>
