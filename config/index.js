@@ -38,10 +38,10 @@ module.exports = {
 
   build: {
     // Template for index.html
-    index: path.resolve(__dirname, '../bixiv/www/index.html'),
+    index: path.resolve(__dirname, '../cordova/www/index.html'),
 
     // Paths
-    assetsRoot: path.resolve(__dirname, '../bixiv/www'),
+    assetsRoot: path.resolve(__dirname, '../cordova/www'),
     assetsSubDirectory: 'static',
     assetsPublicPath: './',
 

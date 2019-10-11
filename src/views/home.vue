@@ -14,10 +14,18 @@
     <el-button type="success" size="mini" plain @click="syncho" id="syncho">同步</el-button>
     <el-button type="primary" size="mini" plain @click="today" id="today">今日</el-button>
 
-    <button type="button" class="el-carousel__arrow el-carousel__arrow--left" @click="changeDate(-1)">
+    <button
+      type="button"
+      class="el-carousel__arrow el-carousel__arrow--left"
+      @click="changeDate(-1)"
+    >
       <i class="el-icon-arrow-left"></i>
     </button>
-    <button type="button" class="el-carousel__arrow el-carousel__arrow--right" @click="changeDate(1)">
+    <button
+      type="button"
+      class="el-carousel__arrow el-carousel__arrow--right"
+      @click="changeDate(1)"
+    >
       <i class="el-icon-arrow-right"></i>
     </button>
     <div class="el-backtop" style="right: 10px; bottom: 10px;">
@@ -41,7 +49,6 @@
 </template>
 
 <script>
-var waterfall = null;
 export default {
   components: {},
   data() {
@@ -55,17 +62,32 @@ export default {
       over: false,
       currentDate: "",
       page: 0,
-      selectedCount: 0
+      selectedCount: 0,
+      waterfall: null
     };
   },
   created() {},
   mounted() {
-    this.init();
     let tmpDate = new Date();
-    tmpDate.setDate(tmpDate.getDate() - 1);
+    tmpDate.setDate(tmpDate.getDate() - 3);
     this.currentDate = this.dateFormat(tmpDate);
 
+    // 插件 https://github.com/mqyqingfeng/waterfall
+    this.waterfall = new WaterFall({
+      container: "#waterfall",
+      pins: ".pin",
+      loader: "#loader",
+      gapHeight: 20,
+      gapWidth: 20,
+      pinWidth: 160,
+      threshold: 100
+    });
     let _this = this;
+    _this.waterfall.on("load", function() {
+      // 没有数据
+      if (_this.over) return false;
+      _this.loadMore();
+    });
 
     // 添加点击事件
     document.getElementById("waterfall").addEventListener("click", function(e) {
@@ -91,30 +113,27 @@ export default {
         }
       }
     });
+    this.init();
 
     // 添加右键点击事件
-    document
-      .getElementById("waterfall")
-      .addEventListener("contextmenu", function(e) {
-        event.preventDefault();
+    // document.getElementById("waterfall").addEventListener("contextmenu",
+    //   function(e) {event.preventDefault();
 
-        if (
-          e.target.attributes["class"] &&
-          e.target.attributes["class"].value == "img"
-        ) {
-          let parent = e.target.parentNode;
-          if (parent.attributes["class"].value.indexOf("green-bord") == -1) {
-            parent.classList.add("green-bord");
-          } else {
-            parent.classList.remove("green-bord");
-          }
-        }
-      });
+    //     if (
+    //       e.target.attributes["class"] &&
+    //       e.target.attributes["class"].value == "img"
+    //     ) {
+    //       let parent = e.target.parentNode;
+    //       if (parent.attributes["class"].value.indexOf("green-bord") == -1) {
+    //         parent.classList.add("green-bord");
+    //       } else {
+    //         parent.classList.remove("green-bord");
+    //       }
+    //     }
+    //   });
   },
   methods: {
     init() {
-      console.log("初始化")
-      console.log(this.over)
       // 初始化
       this.list = [];
       this.page = 1;
@@ -122,74 +141,64 @@ export default {
       this.selectedCount = 0;
       document.getElementById("waterfall").innerHTML = "";
 
-      // 插件 https://github.com/mqyqingfeng/waterfall
-      waterfall = new WaterFall({
-        container: "#waterfall",
-        pins: ".pin",
-        loader: "#loader",
-        gapHeight: 20,
-        gapWidth: 20,
-        pinWidth: 160,
-        threshold: 100
-      });
-
-      let _this = this;
-      waterfall.on("load", function() {
-        _this.loadMore();
-      });
+      let columnHeightArr = this.waterfall._columnHeightArr;
+      if (columnHeightArr) {
+        // 清除waterfall高度
+        for (let index = 0; index < columnHeightArr.length; index++) {
+          columnHeightArr[index] = 0;
+        }
+      }
     },
     loadMore() {
       // 加载数据
-      // 没有数据
-      console.log("加载数据")
-      if (this.over) return;
+      console.log("加载数据---" + this.currentDate);
       let _this = this;
-
       getData(_this.page, _this.currentDate).then(res => {
         _this.page += 1;
         if (!res || !res.data || !res.data.data || res.data.data.length < 1) {
-          this.over = true;
-          // document.getElementById("loader").innerHTML("hahahahahah")
-          return;
-        }
+          _this.over = true;
+        } else {
+          // 处理多张图片
+          let dataArr = res.data.data;
+          let imgArr = [];
+          for (let i = 0; i < dataArr.length; i++) {
+            let e = dataArr[i];
+            if (e.type == "manga" || e.pageCount > 10) {
+              continue;
+            }
 
-        // 处理多张图片
-        let dataArr = res.data.data;
-        let imgArr = [];
-        for (let i = 0; i < dataArr.length; i++) {
-          let e = dataArr[i];
-          if (e.type == "manga" || e.pageCount > 10) {
-            continue;
+            e.imageUrls.forEach(urls => {
+              let newObj = {};
+              clone(e, newObj);
+              newObj.src = urls;
+              newObj.src.large = newObj.src.large.replace(
+                "pximg.net",
+                "pixiv.cat"
+              );
+              imgArr.push(newObj);
+            });
           }
 
-          let partArr = e.imageUrls.forEach(urls => {
-            let newObj = {};
-            clone(e, newObj);
-            newObj.src = urls;
-            newObj.src.large = newObj.src.large.replace('pximg.net', 'pixiv.cat');
-            imgArr.push(newObj);
-          });
+          let preLen = _this.list.length;
+          var arr = [];
+          for (var i = 0, len = imgArr.length; i < len; i++) {
+            var data = imgArr[i];
+            arr.push(
+              '<div class="pin"><img son-idx="' +
+                (preLen + i) +
+                '" src="' +
+                data.src.large +
+                '" class="img" alt="' +
+                data.title +
+                '"> <p class="description">' +
+                data.title +
+                '<i class="el-icon-success"></i></p></div>'
+            );
+          }
+          _this.list.push(...imgArr);
+          // 调用 append 方法 检验是否所有的图片都具有高度后才会 append 进文档树中
+          _this.waterfall.append(arr.join(""), ".img");
         }
-
-        let preLen = _this.list.length;
-        var arr = [];
-        for (var i = 0, len = imgArr.length; i < len; i++) {
-          var data = imgArr[i];
-          arr.push(
-            '<div class="pin"><img son-idx="' +
-              (preLen + i) +
-              '" src="' +
-              data.src.large +
-              '" class="img" alt="' +
-              data.title +
-              '"> <p class="description">' +
-              data.title +
-              '<i class="el-icon-success"></i></p></div>'
-          );
-        }
-        _this.list.push(...imgArr);
-        // 调用 append 方法 检验是否所有的图片都具有高度后才会 append 进文档树中
-        waterfall.append(arr.join(""), ".img");
       });
     },
     showBigAction(idx) {
@@ -211,7 +220,7 @@ export default {
       for (let i = 0; i < checkedList.length; i++) {
         let e = checkedList[i];
         let img = e.previousElementSibling;
-        let index = img.getAttribute('son-idx');
+        let index = img.getAttribute("son-idx");
         let data = _this.list[index];
 
         downloadIamge(
@@ -250,6 +259,7 @@ export default {
       date.setDate(date.getDate() + i);
       this.currentDate = this.dateFormat(date);
       this.init();
+      this.loadMore();
     },
     dateFormat(date) {
       var oYear = date.getFullYear();
@@ -272,7 +282,7 @@ function getData(page, currentDate) {
     params: {
       page: page,
       date: currentDate,
-      mode: 'day'
+      mode: "day"
     }
     // data: {}
   });
@@ -317,10 +327,7 @@ function downloadIamge(imgsrc, name) {
 .el-carousel__arrow {
   position: fixed;
 }
-/* .el-backtop {
-  bottom: 10px !important;
-  right: 10px !important;
-} */
+
 .description i {
   display: none;
   color: lime;
@@ -347,5 +354,10 @@ function downloadIamge(imgsrc, name) {
   position: absolute;
   right: 10px;
   top: 40px;
+}
+.footer {
+  font-size: 20px;
+  font-weight: bolder;
+  color: aqua;
 }
 </style>

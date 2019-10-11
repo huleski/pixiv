@@ -251,7 +251,6 @@
     };
 
     proto.append = function(html, selector) {
-
         this._checkResult = [];
         this._newPins = [];
 
