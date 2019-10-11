@@ -20,3 +20,4 @@ cordova/node_modules/
 cordova/platforms/
 cordova/plugins/
 cordova/res/
+cordova/www/
