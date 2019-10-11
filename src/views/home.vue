@@ -62,7 +62,7 @@ export default {
   mounted() {
     this.init();
     let tmpDate = new Date();
-    tmpDate.setDate(tmpDate.getDate() - 3);
+    tmpDate.setDate(tmpDate.getDate() - 1);
     this.currentDate = this.dateFormat(tmpDate);
 
     let _this = this;
