@@ -11,7 +11,7 @@
       ></el-date-picker>
     </div>
     <el-badge :value="selectedCount" class="item" type="success" id="count" />
-    <el-button type="success" size="mini" plain @click="syncho" id="syncho">同步</el-button>
+    <el-button type="success" size="mini" plain @click="syncho" id="syncho">保存</el-button>
     <el-button type="primary" size="mini" plain @click="today" id="today">今日</el-button>
 
     <button
@@ -49,6 +49,8 @@
 </template>
 
 <script>
+import fetch from "@/axios/config.js";
+
 export default {
   components: {},
   data() {
@@ -155,11 +157,11 @@ export default {
       let _this = this;
       getData(_this.page, _this.currentDate).then(res => {
         _this.page += 1;
-        if (!res || !res.data || !res.data.data || res.data.data.length < 1) {
+        if (!res || !res.data || res.data.length < 1) {
           _this.over = true;
         } else {
           // 处理多张图片
-          let dataArr = res.data.data;
+          let dataArr = res.data;
           let imgArr = [];
           for (let i = 0; i < dataArr.length; i++) {
             let e = dataArr[i];
@@ -167,14 +169,12 @@ export default {
               continue;
             }
 
-            e.imageUrls.forEach(urls => {
+            e.imageUrls.forEach(function(url, sort) {
               let newObj = {};
               clone(e, newObj);
-              newObj.src = urls;
-              newObj.src.large = newObj.src.large.replace(
-                "pximg.net",
-                "pixiv.cat"
-              );
+              newObj.src = url;
+              newObj.src.large = newObj.src.large.replace("pximg.net","pixiv.cat");
+              newObj.sort = sort;
               imgArr.push(newObj);
             });
           }
@@ -200,6 +200,11 @@ export default {
           _this.waterfall.append(arr.join(""), ".img");
         }
       });
+      this.$message({
+          showClose: true,
+          message: '获取数据成功, 正在加载图片..',
+          type: 'success'
+        });
     },
     showBigAction(idx) {
       // 图片放大预览
@@ -214,6 +219,7 @@ export default {
     },
     syncho() {
       // 同步
+      let pics = [];
       let _this = this;
       let checkedList = document.getElementsByClassName("checked");
 
@@ -221,28 +227,47 @@ export default {
         let e = checkedList[i];
         let img = e.previousElementSibling;
         let index = img.getAttribute("son-idx");
-        let data = _this.list[index];
+        let elem = _this.list[index];
 
-        downloadIamge(
-          img.src,
-          data.artistPreView.name + " •「" + data.id + "」"
-        );
+        let object = {};
+        object.title = elem.title;
+        object.illustId = elem.id;
+        object.caption = elem.caption;
+        object.sort = elem.sort;
+        object.user = elem.artistPreView.name;
+        object.userId = elem.artistPreView.id;
+        object.userAvatar = elem.artistPreView.avatar;
+        object.originalImg = elem.src.original;
+        object.fixedImg = elem.src.large;
+        object.pixImg = elem.src.medium;
+        object.rankDate = _this.currentDate;
+       
+        let tagsArr = new Array();
+        elem.tags.forEach(function(item, index){
+            tagsArr.push(item.name);
+        });
+        object.tags = tagsArr.join(",");
+        pics.push(object);
       }
 
-      // return fetch({
-      //   url: "/static/data.json",
-      //   method: "post",
-      //   // params:{'year': year},
-      //   data: {}
-      // });
+      return fetch.local({
+        url: "/pic/save",
+        method: "post",
+        data: JSON.stringify(pics)
+      });
     },
-    today() {},
+    today() {
+      return fetch.local({
+        url: "/pic/today",
+        method: "post"
+      });
+    },
     toTop() {
       // 回到顶部
       var gotoTop = function() {
         var currentPosition =
           document.documentElement.scrollTop || document.body.scrollTop;
-        currentPosition -= 100;
+        currentPosition -= 1000;
         if (currentPosition > 0) {
           window.scrollTo(0, currentPosition);
         } else {
@@ -272,10 +297,9 @@ export default {
   }
 };
 
-import fetch from "@/axios/config.js";
 //获取数据
 function getData(page, currentDate) {
-  return fetch({
+  return fetch.service({
     url: "/ranks",
     // url: "/static/data.json",
     method: "get",
@@ -295,31 +319,6 @@ function clone(origin, target) {
     target[prop] = origin[prop];
   }
   return target;
-}
-
-/**
- * 下载图片
- * @param  imgsrc 下载图片地址
- * @param  name 图片名
- */
-function downloadIamge(imgsrc, name) {
-  var image = new Image();
-  // 解决跨域 Canvas 污染问题
-  image.setAttribute("crossOrigin", "anonymous");
-  image.onload = function() {
-    var canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
-    var context = canvas.getContext("2d");
-    context.drawImage(image, 0, 0, image.width, image.height);
-    var url = canvas.toDataURL("image/png"); //得到图片的base64编码数据
-    var a = document.createElement("a"); // 生成一个a元素
-    var event = new MouseEvent("click"); // 创建一个单击事件
-    a.download = name || "photo"; // 设置图片名称
-    a.href = url; // 将生成的URL设置为a.href属性
-    a.dispatchEvent(event); // 触发a的单击事件
-  };
-  image.src = imgsrc;
 }
 </script>
 

@@ -36,11 +36,9 @@ module.exports = {
     cssSourceMap: true
   },
 
+  // 打包构建路径
   build: {
-    // Template for index.html
     index: path.resolve(__dirname, '../cordova/www/index.html'),
-
-    // Paths
     assetsRoot: path.resolve(__dirname, '../cordova/www'),
     assetsSubDirectory: 'static',
     assetsPublicPath: './',
