@@ -159,6 +159,13 @@ export default {
         _this.page += 1;
         if (!res || !res.data || res.data.length < 1) {
           _this.over = true;
+          this.$message({
+            showClose: true,
+            message: '没有更多数据了..',
+            type: 'warning'
+          });
+          let loader = document.getElementById("loader");
+          loader.style.display = "none";
         } else {
           // 处理多张图片
           let dataArr = res.data;
@@ -173,7 +180,6 @@ export default {
               let newObj = {};
               clone(e, newObj);
               newObj.src = url;
-              newObj.src.large = newObj.src.large.replace("pximg.net","pixiv.cat");
               newObj.sort = sort;
               imgArr.push(newObj);
             });
@@ -187,7 +193,7 @@ export default {
               '<div class="pin"><img son-idx="' +
                 (preLen + i) +
                 '" src="' +
-                data.src.large +
+                data.src.large.replace("pximg.net","pixiv.cat") +
                 '" class="img" alt="' +
                 data.title +
                 '"> <p class="description">' +
@@ -198,13 +204,9 @@ export default {
           _this.list.push(...imgArr);
           // 调用 append 方法 检验是否所有的图片都具有高度后才会 append 进文档树中
           _this.waterfall.append(arr.join(""), ".img");
+          _this.loadMore();
         }
       });
-      this.$message({
-          showClose: true,
-          message: '获取数据成功, 正在加载图片..',
-          type: 'success'
-        });
     },
     showBigAction(idx) {
       // 图片放大预览
