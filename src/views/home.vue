@@ -153,7 +153,6 @@ export default {
     },
     loadMore() {
       // 加载数据
-      console.log("加载数据---" + this.currentDate);
       let _this = this;
       getData(_this.page, _this.currentDate).then(res => {
         _this.page += 1;
@@ -170,20 +169,17 @@ export default {
           // 处理多张图片
           let dataArr = res.data;
           let imgArr = [];
-          for (let i = 0; i < dataArr.length; i++) {
-            let e = dataArr[i];
-            if (e.type == "manga" || e.pageCount > 10) {
-              continue;
+          dataArr.forEach(e => {
+            if (e.type != "manga" && e.pageCount < 10) {
+              e.imageUrls.forEach(function(url, sort) {
+                let newObj = {};
+                clone(e, newObj);
+                newObj.src = url;
+                newObj.sort = sort;
+                imgArr.push(newObj);
+              })
             }
-
-            e.imageUrls.forEach(function(url, sort) {
-              let newObj = {};
-              clone(e, newObj);
-              newObj.src = url;
-              newObj.sort = sort;
-              imgArr.push(newObj);
-            });
-          }
+          })
 
           let preLen = _this.list.length;
           var arr = [];
@@ -204,7 +200,6 @@ export default {
           _this.list.push(...imgArr);
           // 调用 append 方法 检验是否所有的图片都具有高度后才会 append 进文档树中
           _this.waterfall.append(arr.join(""), ".img");
-          _this.loadMore();
         }
       });
     },
@@ -212,7 +207,7 @@ export default {
       // 图片放大预览
       let tmp = [];
       this.list.forEach(ele => {
-        tmp.push(ele.src.large);
+        tmp.push(ele.src.large.replace("pximg.net","pixiv.cat"));
       });
       this.$imagePreview({
         images: tmp,
