@@ -1,5 +1,12 @@
 <template>
   <div style="margin-top: 20px;">
+    <el-input
+      placeholder="关键词"
+      @keyup.enter.native="search"
+      style="width:200px;margin-bottom:10px;"
+      v-model="searchKey"
+      clearable
+    ></el-input>
     <div class="block">
       <el-date-picker
         v-model="currentDate"
@@ -63,6 +70,7 @@ export default {
       list: [],
       over: false,
       currentDate: "",
+      searchKey: "",
       page: 0,
       selectedCount: 0,
       waterfall: null
@@ -154,14 +162,14 @@ export default {
     loadMore() {
       // 加载数据
       let _this = this;
-      getData(_this.page, _this.currentDate).then(res => {
+      getData(_this.page, _this.currentDate, _this.searchKey).then(res => {
         _this.page += 1;
         if (!res || !res.data || res.data.length < 1) {
           _this.over = true;
           this.$message({
             showClose: true,
-            message: '没有更多数据了..',
-            type: 'warning'
+            message: "没有更多数据了..",
+            type: "warning"
           });
           let loader = document.getElementById("loader");
           loader.style.display = "none";
@@ -177,9 +185,9 @@ export default {
                 newObj.src = url;
                 newObj.sort = sort;
                 imgArr.push(newObj);
-              })
+              });
             }
-          })
+          });
 
           let preLen = _this.list.length;
           var arr = [];
@@ -189,7 +197,7 @@ export default {
               '<div class="pin"><img son-idx="' +
                 (preLen + i) +
                 '" src="' +
-                data.src.large.replace("pximg.net","pixiv.cat") +
+                data.src.large.replace("pximg.net", "pixiv.cat") +
                 '" class="img" alt="' +
                 data.title +
                 '"> <p class="description">' +
@@ -207,7 +215,7 @@ export default {
       // 图片放大预览
       let tmp = [];
       this.list.forEach(ele => {
-        tmp.push(ele.src.large.replace("pximg.net","pixiv.cat"));
+        tmp.push(ele.src.large.replace("pximg.net", "pixiv.cat"));
       });
       this.$imagePreview({
         images: tmp,
@@ -238,10 +246,10 @@ export default {
         object.fixedImg = elem.src.large;
         object.pixImg = elem.src.medium;
         object.rankDate = _this.currentDate;
-       
+
         let tagsArr = new Array();
-        elem.tags.forEach(function(item, index){
-            tagsArr.push(item.name);
+        elem.tags.forEach(function(item, index) {
+          tagsArr.push(item.name);
         });
         object.tags = tagsArr.join(",");
         pics.push(object);
@@ -259,22 +267,26 @@ export default {
         method: "post"
       });
     },
+    search() {
+      this.init();
+      this.loadMore();
+    },
     toTop() {
       // 回到顶部
-      var gotoTop = function() {
-        var currentPosition =
-          document.documentElement.scrollTop || document.body.scrollTop;
-        currentPosition -= 1000;
-        if (currentPosition > 0) {
-          window.scrollTo(0, currentPosition);
-        } else {
-          window.scrollTo(0, 0);
-          clearInterval(timer);
-          timer = null;
-        }
-      };
-      var timer = setInterval(gotoTop, 1);
-      // window.scrollTo(0, 0);
+      // var gotoTop = function() {
+      //   var currentPosition =
+      //     document.documentElement.scrollTop || document.body.scrollTop;
+      //   currentPosition -= 1000;
+      //   if (currentPosition > 0) {
+      //     window.scrollTo(0, currentPosition);
+      //   } else {
+      //     window.scrollTo(0, 0);
+      //     clearInterval(timer);
+      //     timer = null;
+      //   }
+      // };
+      // var timer = setInterval(gotoTop, 1);
+      window.scrollTo(0, 0);
     },
     changeDate(i) {
       let date = new Date(this.currentDate);
@@ -295,18 +307,34 @@ export default {
 };
 
 //获取数据
-function getData(page, currentDate) {
-  return fetch.service({
-    url: "/ranks",
-    // url: "/static/data.json",
-    method: "get",
-    params: {
-      page: page,
-      date: currentDate,
-      mode: "day"
-    }
-    // data: {}
-  });
+function getData(page, currentDate, searchKey) {
+  if (searchKey != "") {
+    return fetch.service({
+      url: "/illustrations",
+      method: "get",
+      params: {
+        illustType: "illust",
+        searchType: "original",
+        maxSanityLevel: 6,
+        page: page,
+        pageSize: 30,
+        keyword: searchKey
+      }
+      // data: {}
+    });
+  } else {
+    return fetch.service({
+      url: "/ranks",
+      // url: "/static/data.json",
+      method: "get",
+      params: {
+        page: page,
+        date: currentDate,
+        mode: "day"
+      }
+      // data: {}
+    });
+  }
 }
 
 //深度克隆对象的方法	 -- > 深层拷贝，对象属性方法一致，单都是单独的个体。
